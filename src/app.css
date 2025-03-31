@@ -73,3 +73,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+} input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.section {
+  @apply relative flex w-full max-w-[1300px] flex-row justify-center
+}
+.input {
+  @apply border-zinc-700/50 bg-zinc-900 transition-all outline-0 duration-150 focus-visible:border-zinc-700 focus-visible:bg-zinc-800/75
+}
