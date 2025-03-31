@@ -1,6 +1,8 @@
 <script lang="ts">
+	import GithubIcon from '$lib/components/icons/GithubIcon.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 	import { ToggleGroup, ToggleGroupItem } from '$lib/components/ui/toggle-group/';
 	import { Tooltip, TooltipProvider, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import TooltipContent from '$lib/components/ui/tooltip/tooltip-content.svelte';
@@ -9,14 +11,28 @@
 	// Magic Numbers
 	const DEFAULT_KEY_1 = 'Z';
 	const DEFAULT_KEY_2 = 'X';
+	const DEFAULT_CLICKS = 100;
+	const DEFAULT_SECONDS = 10;
+	const MIN_CLICKS = 3;
+	const MIN_SECONDS = 1;
+	const MODE = {
+		CLICKS: 'clicks',
+		SECONDS: 'seconds'
+	};
 
+	let inputAmount = $state('');
+	let config = $state({
+		mode: MODE.CLICKS,
+		clicksValue: DEFAULT_CLICKS,
+		secondsValue: DEFAULT_SECONDS
+	});
 	// Keybind States
 	let key1 = $state(DEFAULT_KEY_1);
 	let key2 = $state(DEFAULT_KEY_2);
-	// Info
+	// Info States
 	let BPM = $state(0);
 	let UR = $state(0);
-	// Benchmark tracking
+	// Benchmark Tracking States
 	let isRunningBenchmark = $state(false);
 
 	// Keybind Functions
@@ -31,6 +47,26 @@
 		const target = event.target as HTMLInputElement;
 		target.select();
 	}
+
+	// Input Value Handling Functions
+	function handleInputConfigMode(event: string) {
+		if (event === MODE.CLICKS) {
+			config.mode = MODE.CLICKS;
+		} else {
+			config.mode = MODE.SECONDS;
+		}
+	}
+	function handleInputConfigValue(event: Event) {
+		const target = event.target as HTMLInputElement | null;
+		if (target) {
+			const newValue = Number(target.value);
+			if (config.mode === MODE.CLICKS) {
+				config.clicksValue = Math.max(newValue, MIN_CLICKS);
+			} else {
+				config.secondsValue = Math.max(newValue, MIN_SECONDS);
+			}
+		}
+	}
 </script>
 
 <div class="mb-12 flex flex-col items-center">
@@ -39,23 +75,48 @@
 		<Button
 			variant={'ghost'}
 			class="absolute right-3 top-3 cursor-pointer"
-			href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-			target="_blank"
+			onclick={() => {window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")}}
 		>
 			My Stats
 		</Button>
 	</section>
 
 	<section class="section mt-24">
-		<div class="flex">
-			<Input type="number" class="input rounded-r-none" />
-			<ToggleGroup type="single" variant="nsh" value="clicks" class="gap-0">
-				<ToggleGroupItem value="clicks" class="px-2 first:rounded-none"
-					><MousePointerClick /></ToggleGroupItem
-				>
-				<ToggleGroupItem value="seconds" class="px-2 last:rounded-l-none"><Clock /></ToggleGroupItem
-				>
-			</ToggleGroup>
+		<div class="flex flex-col">
+			<Label for="inputAmout"
+				>Stop at
+				{#if config.mode === MODE.CLICKS}
+					<span>{config.clicksValue} clicks</span>
+				{:else}
+					<span>{config.secondsValue} seconds</span>
+				{/if}</Label
+			>
+			<div class="flex">
+				<Input
+					type="number"
+					id="inputAmount"
+					min={config.mode === MODE.CLICKS ? MIN_CLICKS : MIN_SECONDS}
+					class="input rounded-r-none"
+					value={config.mode === MODE.CLICKS ? config.clicksValue : config.secondsValue}
+					oninput={(e) => handleInputConfigValue(e)}
+				/>
+				<ToggleGroup type="single" variant="nsh" value={config.mode} class="gap-0">
+					<ToggleGroupItem
+						value={MODE.CLICKS}
+						class={`px-2 first:rounded-none ${config.mode === MODE.CLICKS ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
+						onclick={() => {
+							handleInputConfigMode(MODE.CLICKS);
+						}}><MousePointerClick /></ToggleGroupItem
+					>
+					<ToggleGroupItem
+						value={MODE.SECONDS}
+						class={`px-2 last:rounded-l-none ${config.mode === MODE.SECONDS ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
+						onclick={() => {
+							handleInputConfigMode(MODE.SECONDS);
+						}}><Clock /></ToggleGroupItem
+					>
+				</ToggleGroup>
+			</div>
 		</div>
 	</section>
 
@@ -106,4 +167,10 @@
 			</TooltipProvider>
 		</div>
 	</section>
+
+	<Button
+		class="text-foreground fixed bottom-2 right-2 cursor-pointer rounded-md bg-zinc-800 hover:bg-zinc-800/75"
+		onclick={() => {window.open("https://github.com/zNyash/osu-stream-benchmark")}}
+		target="_blank"><GithubIcon /> Repository</Button
+	>
 </div>

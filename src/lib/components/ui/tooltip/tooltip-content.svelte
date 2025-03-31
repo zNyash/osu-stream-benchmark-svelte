@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Tooltip as TooltipPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils.js";
+	import { Tooltip as TooltipPrimitive } from 'bits-ui';
+	import { cn } from '$lib/utils.js';
 
 	let {
 		ref = $bindable(null),
 		class: className,
-		sideOffset = 4,
+		sideOffset = 0,
 		...restProps
 	}: TooltipPrimitive.ContentProps = $props();
 </script>
@@ -14,7 +14,8 @@
 	bind:ref
 	{sideOffset}
 	class={cn(
-		"bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 overflow-hidden rounded-md px-3 py-1.5 text-xs",
+		"-z-1 tooltip-component-index before:absolute before:-bottom-1.5 before:right-1/2 before:size-3 before:translate-x-1/2 before:rotate-45 before:bg-zinc-800 before:content-['']",
+		'z-50 overflow-hidden rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-primary animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
 		className
 	)}
 	{...restProps}
