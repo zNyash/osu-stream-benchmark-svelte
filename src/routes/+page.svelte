@@ -6,8 +6,15 @@
 	import { ToggleGroup, ToggleGroupItem } from '$lib/components/ui/toggle-group/';
 	import { Tooltip, TooltipProvider, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import TooltipContent from '$lib/components/ui/tooltip/tooltip-content.svelte';
+	import { getBpm } from '$lib/osuCalc';
 	import { Clock, MousePointerClick } from '@lucide/svelte';
+	import _ from 'lodash';
 
+	const data = [
+		{ x: 0, y: 1 },
+		{ x: 1, y: 2 },
+		{ x: 2, y: 3 }
+	];
 	// Magic Numbers
 	const DEFAULT_KEY_1 = 'Z';
 	const DEFAULT_KEY_2 = 'X';
@@ -20,7 +27,6 @@
 		SECONDS: 'seconds'
 	};
 
-	let inputAmount = $state('');
 	let config = $state({
 		mode: MODE.CLICKS,
 		clicksValue: DEFAULT_CLICKS,
@@ -34,6 +40,12 @@
 	let UR = $state(0);
 	// Benchmark Tracking States
 	let isRunningBenchmark = $state(false);
+	let tapCount = $state(0);
+	let timestamps = $state<number[]>([]);
+	// Timer States
+	let startTime = $state<number | null>(null);
+	let elapsedTime = $state(0);
+	let timerInteval: ReturnType<typeof setInterval> | null = null;
 
 	// Keybind Functions
 	function handleKeybind(event: Event, key: string) {
@@ -67,15 +79,91 @@
 			}
 		}
 	}
+
+	// Benchmark Toggle Function
+	function toggleIsRunningBenchmark() {
+		if (!isRunningBenchmark) {
+			startTime = null;
+			elapsedTime = 0;
+			tapCount = 0;
+			BPM = 0;
+			UR = 0;
+			timestamps = [];
+		}
+		isRunningBenchmark = !isRunningBenchmark;
+	}
+
+	function handleBenchmarkKeyDown(event: KeyboardEvent) {
+		// Keybind checks to Start and End benchmark
+		if (!isRunningBenchmark) {
+			if (event.code === 'Space' && !isRunningBenchmark) {
+				event.preventDefault();
+				toggleIsRunningBenchmark();
+			}
+			return;
+		}
+		if (event.key === 'Escape') {
+			toggleIsRunningBenchmark();
+			return;
+		}
+
+		// Keybind validation & timer start
+		const pressedKey = event.key.toUpperCase();
+		if (pressedKey === key1 || pressedKey === key2) {
+			// Keypress timestamp
+			const now = performance.now();
+
+			if (startTime === null) {
+				startTime = now;
+				if (config.mode === MODE.SECONDS) {
+					startTimerInterval();
+				}
+			}
+
+			tapCount++;
+			timestamps.push(now);
+			elapsedTime = _.round((now - startTime) / 1000, 2);
+
+			if (elapsedTime > 0) {
+				BPM = _.round(getBpm(tapCount, now - startTime));
+			}
+
+			if (config.mode === MODE.CLICKS && tapCount >= config.clicksValue) {
+				toggleIsRunningBenchmark();
+			}
+		}
+	}
+
+	function startTimerInterval() {
+		if (timerInteval) clearInterval(timerInteval); // Verify if theres any interval on going for some reason just for safety
+		const endTime = (startTime ?? performance.now()) + config.secondsValue * 1000;
+		timerInteval = setInterval(() => {
+			const now = performance.now();
+			elapsedTime = _.round(((now - (startTime ?? now)) / 1000), 2);
+			if (now >= endTime) {
+				if (timerInteval) {
+					clearInterval(timerInteval);
+					timerInteval = null;
+				}
+				toggleIsRunningBenchmark();
+			}
+		}, 16.6666667);
+	}
 </script>
 
+<!-- Keydown Event Listener -->
+<svelte:window on:keydown={handleBenchmarkKeyDown} />
+
+<!-- Page -->
 <div class="mb-12 flex flex-col items-center">
 	<section class="relative flex w-full max-w-[1300px] flex-row md:justify-center">
 		<h1 class="mt-2 pl-3 pt-1.5 text-2xl font-medium md:text-4xl">osu! Tapping Benchmark</h1>
 		<Button
 			variant={'ghost'}
 			class="absolute right-3 top-3 cursor-pointer"
-			onclick={() => {window.open("https://www.youtube.com/watch?v=dQw4w9WgXcQ")}}
+			onclick={() => {
+				window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+			}}
 		>
 			My Stats
 		</Button>
@@ -103,14 +191,14 @@
 				<ToggleGroup type="single" variant="nsh" value={config.mode} class="gap-0">
 					<ToggleGroupItem
 						value={MODE.CLICKS}
-						class={`px-2 first:rounded-none ${config.mode === MODE.CLICKS ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
+						class={`px-2 first:rounded-none ${config.mode === MODE.CLICKS ? 'bg-zinc-700 hover:bg-zinc-700' : ''}`}
 						onclick={() => {
 							handleInputConfigMode(MODE.CLICKS);
 						}}><MousePointerClick /></ToggleGroupItem
 					>
 					<ToggleGroupItem
 						value={MODE.SECONDS}
-						class={`px-2 last:rounded-l-none ${config.mode === MODE.SECONDS ? "bg-zinc-700 hover:bg-zinc-700" : ""}`}
+						class={`px-2 last:rounded-l-none ${config.mode === MODE.SECONDS ? 'bg-zinc-700 hover:bg-zinc-700' : ''}`}
 						onclick={() => {
 							handleInputConfigMode(MODE.SECONDS);
 						}}><Clock /></ToggleGroupItem
@@ -153,10 +241,13 @@
 	<section class="section mt-12">
 		<div class="flex flex-col items-center">
 			<p class="text-6xl font-bold">{BPM} BPM</p>
+			<p>{tapCount} Taps | {elapsedTime} Seconds</p>
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger>
-						<Button class="text-foreground mt-4 cursor-pointer bg-sky-600 hover:bg-sky-600/75"
+						<Button
+							class="mt-4 cursor-pointer bg-sky-600 text-foreground hover:bg-sky-600/75"
+							onclick={toggleIsRunningBenchmark}
 							>{isRunningBenchmark ? 'Stop Benchmark' : 'Start Benchmark'}</Button
 						>
 					</TooltipTrigger>
@@ -169,8 +260,10 @@
 	</section>
 
 	<Button
-		class="text-foreground fixed bottom-2 right-2 cursor-pointer rounded-md bg-zinc-800 hover:bg-zinc-800/75"
-		onclick={() => {window.open("https://github.com/zNyash/osu-stream-benchmark")}}
+		class="fixed bottom-2 right-2 cursor-pointer rounded-md bg-zinc-800 text-foreground hover:bg-zinc-800/75"
+		onclick={() => {
+			window.open('https://github.com/zNyash/osu-stream-benchmark');
+		}}
 		target="_blank"><GithubIcon /> Repository</Button
 	>
 </div>
